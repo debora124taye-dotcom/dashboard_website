@@ -1,0 +1,193 @@
+---
+title: "Final Project Data Analysis & Dashboard"
+author: "Debora Taye, Jack Niu"
+date: 3/6/2026
+format:
+  html:
+    logo: "https://img.freepik.com/premium-photo/fifa-world-cup-png_585805-180.jpg?w=2000"
+    embed-resources: true
+---
+
+## 
+
+```{r}
+#| warning: false
+
+library(tidyverse)
+library(tidyr)
+library(plotly)
+library(dplyr)
+
+#install.packages("DT")
+library(DT)
+```
+
+# I. Introduction:
+
+## 1.1
+
+### Questions:
+
+1.  **Which position throughout each tournament display the highest level of consistency**
+
+2.  **Do players in different positions participate in a different number of World Cup tournaments?**
+
+3.  **Do players with more World Cup experience tend to have better club performance (Goals + Assists)?**
+
+This [data project](https://github.com/neaorin/PredictTheWorldCup?utm_source=chatgpt.com) focuses on using historical World Cup match data to train machine learning models that predict match outcomes. Similarly, our project uses historical World Cup data from the world cup dataset to predict match results for the 2026 World Cup. While this project predicts past or simulated tournaments, our project extends the idea by focusing specifically on future 2026 World Cup matches, allowing us to evaluate how well historical trends generalize to upcoming competitions. [Elo rating systems](https://en.wikipedia.org/wiki/World_Football_Elo_Ratings?utm_source=chatgpt.com) are commonly used to estimate team strength and predict match outcomes. Our project can draw inspiration from this approach by incorporating team performance indicators derived from historical match results. While Elo ratings provide a single summary score for each team, our project can expand on this by using multiple variables from the dataset, such as goals scored, match location, and tournament stage.
+
+For this project, we decided to use a github dataset that contained detailed information about all the past tournaments that occurred. The dataset itself has historical data on both the men’s and women's World Cup tournaments from the first ever to the most recent of the dataset's creation (1930–2022 & 1991-2022). The dataset displays the demographics of the players such as their playing positions and number of tournaments played. (<https://github.com/jfjelstul/worldcup>). The source for our second dataset was Kaggle and the dataset was collected by real world individuals (dataset created by user aesika) The dataset is reliable as it matches up in terms of statistics with the official Premier League website as well as the official transfer. Market website (<https://www.kaggle.com/datasets/aesika/english-premier-league-player-stats-2425>)
+
+Soccer fanatics often discuss and hold assumptions with a surface level understanding of the teams and matches with minimal statistical evidence to back their claims. With our project, support is provided to either validate or challenge these usually common beliefs and assumptions within the community. Sports analysts are also able to use these statistics and data to assist even the teams themselves. In the World Cup, match-ups within grouped teams occur. Our analysis would be able to help managers assess and make supporting decisions on what could improve their progression through the World Cup, ultimately getting to the final, and ultimately the trophy. With our dataset being diverse in terms of variables and holding multiple data points, the variability available allows for our group to provide dependable analytic results by exploring multiple perspectives, giving an answer to our central question that is leading our topic. All these factors provide a reliable source for evidence-based discussions and conclusions
+
+This combined dataset has several limitations that may introduce bias. First, the data only includes players from the English Premier League, which excludes players from other leagues and limits how representative the findings are of professional football as a whole. Second, the dataset focuses exclusively on men’s football, excluding women’s competitions entirely. Third, joining datasets by player name may result in incorrect matches or missed matches due to shared names or differences in spelling across sources. In terms of human rights principles, privacy concerns are minimal because all data is publicly available and relates to professional athletes. However, transparency and explainability are limited by the lack of a detailed codebook for the EPL dataset, making some metrics harder to fully interpret. Fairness and non-discrimination are affected by the exclusion of women’s leagues and non-EPL players. While human control of technology and professional responsibility are maintained through careful documentation and acknowledgment of limitations, the dataset only partially promotes broader human values due to its narrow scope.
+
+## 1.2 Data Context
+
+### Dataset 1
+
+**Public Link:** [jfjelstul/worldcup: A Comprehensive Database on the FIFA World Cup (Men's and Women's)](https://github.com/jfjelstul/worldcup)
+
+**Creators of the Dataset:** Fjelstul, Joshua C.
+
+The dataset/ database measures multiple aspects of each World Cup tournament (1930-2022), from team performance, player performance, as well as tournament standings and tournament groups. It is vast and detailed with each dataset having at least five columns of variables being observed. For this project, the player dataset was chosen which includes demographic information of players as well as performance such as minutes played, goals, assists, play position and more, Within the original dataset, there are 10401 rows of observations with 13 columns/ features. The dataset was published in 2023. This dataset provides a variety of variables that observe the different aspects of the World Cup over the span of multiple decades, With this detail and variation, we will be able to observe patterns and trends that occur with statistically significant results.
+
+### Dataset 2
+
+**Public Link**: [English Premier League - Player Stats - 24/25](https://www.kaggle.com/datasets/aesika/english-premier-league-player-stats-2425)
+
+**Creators of the Dataset:** Ahmed Elsayeu
+
+This dataset displays the performance of players in the English Premier League in the most recent completed season (24/25). The dataset provides not only player names within the league that would be helpful, as well as stats such as goals, assists, nationality, and playing position. The dataset contains 55 columns with 562 rows of observations. The dataset was published in 2025.The dataset provides statistics on player likely to play in the upcoming World Cup. With this, our results will be more relevant and applicable to the tournament and the matches that occur.
+
+### joined data
+
+```{r}
+dataset_one_df <- read.csv("players.csv")
+dataset_two_df <- read.csv("epl_player_stats_24_25.csv")
+
+
+#mutating dataset_one
+mutated_df_one <-
+  dataset_one_df |>
+  mutate(full_name = paste(given_name, family_name))
+
+
+#mutating dataset_two
+mutated_df_two <-
+  dataset_two_df |>
+  mutate(full_name = paste(first_name, last_name))
+
+
+#joining
+joined_df <-
+  mutated_df_one|>
+  inner_join(mutated_df_two, join_by(full_name))
+
+#To combine the datasets, we created a full_name variable in both datasets by concatenating first and last names. We then performed an inner join on full_name to match World Cup player records with EPL player statistics.
+```
+
+# II. 3 questions with visualizations
+
+### Question 1: **Which position throughout each tournament display the highest level of consistency**
+
+```{r}
+
+joined_df_ <- joined_df |>
+  pivot_longer(
+    cols = c(goal_keeper, defender, midfielder, forward),
+    names_to  = "position",
+    values_to = "is_position"
+  ) |>
+  filter(is_position == 1) |>
+  select(-is_position)
+
+joined_df |>
+  filter(!is.na(Goals), !is.na(Assists)) |>
+  summarize(cor_goals_assists = cor(Goals, Assists))
+
+
+ggplot(data = joined_df_, aes(
+    x = position,
+    y = Goals + Assists,
+    fill = position,
+    )) +
+  geom_boxplot(alpha = 0.5, outlier.shape = 20) +
+  coord_flip() +
+  labs(
+    title = "Offensive Performance by Position",
+    x = "Position",
+    y = "Goals + Assists",
+    fill = "Position"
+  ) +
+  theme_minimal() 
+
+```
+
+intermediate tool:
+
+summarize is responsible for calculating the correlation between Goals + Assists across all the players in the dataset. It gives a number that is responsible for relaying this correlation between overall player and offensive performance. Removes all NA values that players may have to provide more reliable information.
+
+### Question 2: **Do players in different positions participate in a different number of World Cup tournaments?**
+
+```{r}
+
+joined_df_positions_q2 <- joined_df_ |>
+  mutate(count_tournaments = as.factor(count_tournaments))
+
+ggplot(joined_df_positions_q2, aes( x = count_tournaments,
+    fill = count_tournaments,
+    text = paste(
+      "Position:", position,
+      "Tournaments Played:", count_tournaments
+    )
+  )
+) +
+  geom_bar() +
+  facet_wrap(~ position, nrow = 1) +
+  labs(
+    title = "Distribution of World Cups Played by Position",
+    x = "Number of World Cups Played",
+    y = "Player Count",
+    fill = "Tournaments Played"
+  ) +
+  theme_minimal()
+
+ggplotly(tooltip = "text")
+
+
+```
+
+(Interactive visualization)
+
+### Question 3: **Do players with more World Cup experience tend to have better club performance (Goals + Assists)?**
+
+```{r}
+
+ggplot(joined_df,
+       aes(x = count_tournaments,
+           y = Goals + Assists,
+           )) +
+
+  geom_jitter(width = 0.2, alpha = 0.5, color = "steelblue") +
+
+  labs(
+    title = "World Cup Experience vs Country Performance",
+    x = "Number of World Cups Played",
+    y = "Goals + Assists"
+  ) +
+
+  theme_minimal() 
+```
+
+Tools used from Outside of class:
+
+geom_jitter - wanted to use geom_point but the points all overlapped each other. With geom_jitter we were able to spread out the data points so that they are able to be seen each individually. Learned from Statology.org
+
+# III. Conclusions
+
+Three main insights emerged from this analysis regarding player position, tournament experience, and club performance. This project explored how player position, World Cup experience, and club performance are related in professional soccer using the joined World Cup and EPL datasets. One major takeaway from the analysis is that offensive performance (measured by Goals + Assists) differs across positions. Forwards and attacking midfielders generally showed higher offensive contributions compared to defenders and goalkeepers, which is expected because their roles focus more on scoring and creating chances. The visualization comparing positions showed that attacking players tend to have higher median offensive output, while defensive positions usually contribute less in terms of goals and assists.
+
+Another important finding is that players in different positions appear to participate in different numbers of World Cup tournaments. The distribution of tournament appearances suggests that some positions, especially goalkeepers and defenders, may stay active in international competitions for longer periods. This could be because these roles rely more on experience and positioning rather than physical peak performance. In contrast, midfielders and forwards showed more variation in tournament appearances, possibly due to stronger competition and the physical demands of attacking roles.
+
+The final takeaway is that there appears to be some relationship between World Cup experience and club performance, although the relationship is not perfectly strong. Some players with more tournament appearances also perform well at the club level, but this is not always the case. Because the dataset only includes players who appear in both the World Cup and EPL datasets, the analysis may slightly overestimate the relationship between international experience and performance. In the future, this project could be improved by including more leagues, more performance metrics such as defensive statistics or minutes played, and more tournaments to better understand how international experience influences player performance.
